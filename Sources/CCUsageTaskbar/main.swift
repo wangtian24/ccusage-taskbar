@@ -546,12 +546,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Cancel")
 
-        let stack = NSStackView(frame: NSRect(x: 0, y: 0, width: 420, height: 116))
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 8
+        let settingsView = NSView(frame: NSRect(x: 0, y: 0, width: 420, height: 150))
 
-        let providerPopup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26), pullsDown: false)
+        let providerPopup = NSPopUpButton(frame: NSRect(x: 0, y: 114, width: 320, height: 28), pullsDown: false)
         for provider in UsageProvider.allCases {
             providerPopup.addItem(withTitle: provider.menuTitle)
             providerPopup.lastItem?.representedObject = provider.rawValue
@@ -560,7 +557,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             providerPopup.selectItem(at: index)
         }
 
-        let intervalPopup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26), pullsDown: false)
+        let intervalPopup = NSPopUpButton(frame: NSRect(x: 0, y: 64, width: 320, height: 28), pullsDown: false)
         for interval in RefreshInterval.allCases {
             intervalPopup.addItem(withTitle: interval.menuTitle)
             intervalPopup.lastItem?.representedObject = interval.rawValue
@@ -569,16 +566,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             intervalPopup.selectItem(at: index)
         }
 
-        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 420, height: 24))
+        let input = NSTextField(frame: NSRect(x: 0, y: 4, width: 420, height: 28))
         input.stringValue = executable
 
-        stack.addArrangedSubview(label("Harness"))
-        stack.addArrangedSubview(providerPopup)
-        stack.addArrangedSubview(label("Refresh Interval"))
-        stack.addArrangedSubview(intervalPopup)
-        stack.addArrangedSubview(label("Executable"))
-        stack.addArrangedSubview(input)
-        alert.accessoryView = stack
+        settingsView.addSubview(label("Harness", y: 138))
+        settingsView.addSubview(providerPopup)
+        settingsView.addSubview(label("Refresh Interval", y: 88))
+        settingsView.addSubview(intervalPopup)
+        settingsView.addSubview(label("Executable", y: 38))
+        settingsView.addSubview(input)
+        alert.accessoryView = settingsView
 
         if alert.runModal() == .alertFirstButtonReturn {
             if let rawValue = providerPopup.selectedItem?.representedObject as? String,
@@ -617,8 +614,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
-    private func label(_ title: String) -> NSTextField {
+    private func label(_ title: String, y: CGFloat) -> NSTextField {
         let label = NSTextField(labelWithString: title)
+        label.frame = NSRect(x: 0, y: y, width: 420, height: 16)
         label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         label.textColor = .secondaryLabelColor
         return label
