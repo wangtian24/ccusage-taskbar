@@ -2,7 +2,7 @@
 
 A tiny native macOS menu bar app for showing local AI coding usage from [`ccusage`](https://github.com/ccusage/ccusage).
 
-It can show Claude Code or Codex usage as:
+It can show local usage from any supported `ccusage` harness as:
 
 - cost, with useful precision like `$2.34`, `$12.3`, or `$123`
 - total tokens, formatted as `K`, `M`, or `B`
@@ -13,7 +13,8 @@ The app refreshes every 1 minute by default and includes a manual **Refresh** me
 ## Features
 
 - Native AppKit menu bar app
-- Claude / Codex switcher
+- Compact harness menu with Claude, Codex, and the selected alternate harness
+- Full harness picker in **Settings...**
 - Display mode switcher for cost, total tokens, or output tokens
 - Time ranges:
   - Today
@@ -30,6 +31,24 @@ The app refreshes every 1 minute by default and includes a manual **Refresh** me
   - 5 minutes
   - 10 minutes
   - 60 minutes
+
+Supported harnesses:
+
+- Claude
+- Codex
+- OpenCode
+- Amp
+- Droid
+- Codebuff
+- Hermes Agent
+- pi-agent
+- Goose
+- OpenClaw
+- Kilo
+- Kimi
+- Qwen
+- GitHub Copilot CLI
+- Gemini CLI
 
 ## Install ccusage First
 
@@ -57,7 +76,7 @@ ccusage claude --since 2026-01-01 --json
 ccusage codex --since 2026-01-01 --json
 ```
 
-If `ccusage` is not on the PATH available to GUI apps, open this app's **Preferences...** menu item and set the executable to an absolute path, for example:
+If `ccusage` is not on the PATH available to GUI apps, open this app's **Settings...** menu item and set the executable to an absolute path, for example:
 
 ```sh
 /opt/homebrew/bin/ccusage

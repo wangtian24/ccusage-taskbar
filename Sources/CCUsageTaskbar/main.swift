@@ -2,14 +2,44 @@ import AppKit
 import Foundation
 
 enum UsageProvider: String, CaseIterable {
+    case amp
+    case codebuff
     case claude
     case codex
+    case copilot
+    case droid
+    case gemini
+    case goose
+    case hermes
+    case kilo
+    case kimi
+    case opencode
+    case openclaw
+    case pi
+    case qwen
 
     var menuTitle: String {
         switch self {
+        case .amp: "Amp"
+        case .codebuff: "Codebuff"
         case .claude: "Claude"
         case .codex: "Codex"
+        case .copilot: "GitHub Copilot CLI"
+        case .droid: "Droid"
+        case .gemini: "Gemini CLI"
+        case .goose: "Goose"
+        case .hermes: "Hermes Agent"
+        case .kilo: "Kilo"
+        case .kimi: "Kimi"
+        case .opencode: "OpenCode"
+        case .openclaw: "OpenClaw"
+        case .pi: "pi-agent"
+        case .qwen: "Qwen"
         }
+    }
+
+    var isPrimary: Bool {
+        self == .claude || self == .codex
     }
 }
 
@@ -273,6 +303,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let defaults = UserDefaults.standard
     private let modeKey = "displayMode"
     private let providerKey = "provider"
+    private let alternateProviderKey = "alternateProvider"
     private let periodKey = "period"
     private let executableKey = "executable"
     private let refreshIntervalKey = "refreshInterval"
@@ -296,9 +327,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         set {
             defaults.set(newValue.rawValue, forKey: providerKey)
+            if !newValue.isPrimary {
+                defaults.set(newValue.rawValue, forKey: alternateProviderKey)
+            }
             refresh()
             rebuildMenu()
         }
+    }
+
+    private var alternateProvider: UsageProvider? {
+        guard let rawValue = defaults.string(forKey: alternateProviderKey) else {
+            return nil
+        }
+        return UsageProvider(rawValue: rawValue)
     }
 
     private var period: UsagePeriod {
@@ -417,13 +458,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         menu.addItem(.separator())
-        for provider in UsageProvider.allCases {
-            let item = NSMenuItem(title: provider.menuTitle, action: #selector(selectProvider(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = provider.rawValue
-            item.state = provider == self.provider ? .on : .off
-            menu.addItem(item)
-        }
+        addProviderMenuItems(to: menu)
 
         menu.addItem(.separator())
         menu.addItem(disabledItem("Time Range"))
@@ -451,11 +486,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launchAtLogin.target = self
         launchAtLogin.state = isLaunchAtLoginEnabled() ? .on : .off
         menu.addItem(launchAtLogin)
-        menu.addItem(NSMenuItem(title: "Preferences...", action: #selector(openPreferences), keyEquivalent: ",").targeting(self))
+        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openPreferences), keyEquivalent: ",").targeting(self))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit CCUsage Taskbar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         statusItem.menu = menu
+    }
+
+    private func addProviderMenuItems(to menu: NSMenu) {
+        menu.addItem(disabledItem("Harness"))
+
+        let alternate = alternateProvider ?? (provider.isPrimary ? nil : provider)
+        if let alternate {
+            menu.addItem(providerMenuItem(alternate))
+        }
+
+        menu.addItem(providerMenuItem(.claude))
+        menu.addItem(providerMenuItem(.codex))
+        menu.addItem(NSMenuItem(title: "Others...", action: #selector(openPreferences), keyEquivalent: "").targeting(self))
+    }
+
+    private func providerMenuItem(_ provider: UsageProvider) -> NSMenuItem {
+        let item = NSMenuItem(title: provider.menuTitle, action: #selector(selectProvider(_:)), keyEquivalent: "")
+        item.target = self
+        item.representedObject = provider.rawValue
+        item.state = provider == self.provider ? .on : .off
+        return item
     }
 
     @objc private func selectDisplayMode(_ sender: NSMenuItem) {
@@ -492,18 +548,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openPreferences() {
         let alert = NSAlert()
-        alert.messageText = "CCUsage Executable"
-        alert.informativeText = "Set this to ccusage or an absolute executable path."
+        alert.messageText = "CCUsage Settings"
+        alert.informativeText = "Choose a harness and set ccusage to an executable name or absolute path."
         alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Cancel")
 
+        let stack = NSStackView(frame: NSRect(x: 0, y: 0, width: 420, height: 74))
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 8
+
+        let providerPopup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26), pullsDown: false)
+        for provider in UsageProvider.allCases {
+            providerPopup.addItem(withTitle: provider.menuTitle)
+            providerPopup.lastItem?.representedObject = provider.rawValue
+        }
+        if let index = UsageProvider.allCases.firstIndex(of: provider) {
+            providerPopup.selectItem(at: index)
+        }
+
         let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 420, height: 24))
         input.stringValue = executable
-        alert.accessoryView = input
+
+        stack.addArrangedSubview(label("Harness"))
+        stack.addArrangedSubview(providerPopup)
+        stack.addArrangedSubview(label("Executable"))
+        stack.addArrangedSubview(input)
+        alert.accessoryView = stack
 
         if alert.runModal() == .alertFirstButtonReturn {
+            if let rawValue = providerPopup.selectedItem?.representedObject as? String,
+               let selectedProvider = UsageProvider(rawValue: rawValue) {
+                defaults.set(selectedProvider.rawValue, forKey: providerKey)
+                if !selectedProvider.isPrimary {
+                    defaults.set(selectedProvider.rawValue, forKey: alternateProviderKey)
+                }
+            }
             executable = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
             refresh()
+            rebuildMenu()
         }
     }
 
@@ -524,6 +607,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         item.isEnabled = false
         return item
+    }
+
+    private func label(_ title: String) -> NSTextField {
+        let label = NSTextField(labelWithString: title)
+        label.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        label.textColor = .secondaryLabelColor
+        return label
     }
 
     private func scheduleTimer() {
