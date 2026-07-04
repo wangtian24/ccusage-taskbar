@@ -94,6 +94,16 @@ enum RefreshInterval: TimeInterval, CaseIterable {
         case .sixtyMinutes: "Every 60 minutes"
         }
     }
+
+    var shortTitle: String {
+        switch self {
+        case .thirtySeconds: "30 seconds"
+        case .oneMinute: "1 minute"
+        case .fiveMinutes: "5 minutes"
+        case .tenMinutes: "10 minutes"
+        case .sixtyMinutes: "60 minutes"
+        }
+    }
 }
 
 struct UsageTotals: Decodable, Sendable {
@@ -471,16 +481,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         menu.addItem(.separator())
-        menu.addItem(disabledItem("Refresh Interval"))
-        for interval in RefreshInterval.allCases {
-            let item = NSMenuItem(title: interval.menuTitle, action: #selector(selectRefreshInterval(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = interval.rawValue
-            item.state = interval == refreshInterval ? .on : .off
-            menu.addItem(item)
-        }
-
-        menu.addItem(.separator())
+        menu.addItem(disabledItem("Refresh: \(refreshInterval.shortTitle)"))
         menu.addItem(NSMenuItem(title: "Refresh", action: #selector(refresh), keyEquivalent: "r").targeting(self))
         let launchAtLogin = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
         launchAtLogin.target = self
@@ -538,22 +539,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         period = selectedPeriod
     }
 
-    @objc private func selectRefreshInterval(_ sender: NSMenuItem) {
-        guard let rawValue = sender.representedObject as? TimeInterval,
-              let interval = RefreshInterval(rawValue: rawValue) else {
-            return
-        }
-        refreshInterval = interval
-    }
-
     @objc private func openPreferences() {
         let alert = NSAlert()
         alert.messageText = "CCUsage Settings"
-        alert.informativeText = "Choose a harness and set ccusage to an executable name or absolute path."
+        alert.informativeText = "Choose a harness, refresh interval, and ccusage executable."
         alert.addButton(withTitle: "Save")
         alert.addButton(withTitle: "Cancel")
 
-        let stack = NSStackView(frame: NSRect(x: 0, y: 0, width: 420, height: 74))
+        let stack = NSStackView(frame: NSRect(x: 0, y: 0, width: 420, height: 116))
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 8
@@ -567,11 +560,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             providerPopup.selectItem(at: index)
         }
 
+        let intervalPopup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 420, height: 26), pullsDown: false)
+        for interval in RefreshInterval.allCases {
+            intervalPopup.addItem(withTitle: interval.menuTitle)
+            intervalPopup.lastItem?.representedObject = interval.rawValue
+        }
+        if let index = RefreshInterval.allCases.firstIndex(of: refreshInterval) {
+            intervalPopup.selectItem(at: index)
+        }
+
         let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 420, height: 24))
         input.stringValue = executable
 
         stack.addArrangedSubview(label("Harness"))
         stack.addArrangedSubview(providerPopup)
+        stack.addArrangedSubview(label("Refresh Interval"))
+        stack.addArrangedSubview(intervalPopup)
         stack.addArrangedSubview(label("Executable"))
         stack.addArrangedSubview(input)
         alert.accessoryView = stack
@@ -583,6 +587,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if !selectedProvider.isPrimary {
                     defaults.set(selectedProvider.rawValue, forKey: alternateProviderKey)
                 }
+            }
+            if let rawValue = intervalPopup.selectedItem?.representedObject as? TimeInterval,
+               let selectedInterval = RefreshInterval(rawValue: rawValue) {
+                refreshInterval = selectedInterval
             }
             executable = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
             refresh()

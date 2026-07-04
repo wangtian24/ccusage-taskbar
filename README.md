@@ -25,7 +25,7 @@ The app refreshes every 1 minute by default and includes a manual **Refresh** me
   - Year to date
 - Optional launch at login
 - Configurable `ccusage` executable path
-- Configurable refresh interval:
+- Configurable refresh interval in **Settings...**; the current choice is shown read-only in the menu:
   - 30 seconds
   - 1 minute
   - 5 minutes
