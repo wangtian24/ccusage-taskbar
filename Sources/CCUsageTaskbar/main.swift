@@ -48,6 +48,24 @@ enum DisplayMode: String, CaseIterable {
     }
 }
 
+enum RefreshInterval: TimeInterval, CaseIterable {
+    case thirtySeconds = 30
+    case oneMinute = 60
+    case fiveMinutes = 300
+    case tenMinutes = 600
+    case sixtyMinutes = 3600
+
+    var menuTitle: String {
+        switch self {
+        case .thirtySeconds: "Every 30 seconds"
+        case .oneMinute: "Every 1 minute"
+        case .fiveMinutes: "Every 5 minutes"
+        case .tenMinutes: "Every 10 minutes"
+        case .sixtyMinutes: "Every 60 minutes"
+        }
+    }
+}
+
 struct UsageTotals: Decodable, Sendable {
     let totalCost: Double
     let totalTokens: Int64
@@ -257,6 +275,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let providerKey = "provider"
     private let periodKey = "period"
     private let executableKey = "executable"
+    private let refreshIntervalKey = "refreshInterval"
     private let defaultExecutable = "ccusage"
     private let launchAgentID = "io.github.wangtian24.ccusage-taskbar"
 
@@ -303,14 +322,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private var refreshInterval: RefreshInterval {
+        get {
+            RefreshInterval(rawValue: defaults.double(forKey: refreshIntervalKey)) ?? .oneMinute
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: refreshIntervalKey)
+            scheduleTimer()
+            rebuildMenu()
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         statusItem.button?.title = "cc..."
         rebuildMenu()
         refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
-        }
+        scheduleTimer()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -408,6 +436,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         menu.addItem(.separator())
+        menu.addItem(disabledItem("Refresh Interval"))
+        for interval in RefreshInterval.allCases {
+            let item = NSMenuItem(title: interval.menuTitle, action: #selector(selectRefreshInterval(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = interval.rawValue
+            item.state = interval == refreshInterval ? .on : .off
+            menu.addItem(item)
+        }
+
+        menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Refresh", action: #selector(refresh), keyEquivalent: "r").targeting(self))
         let launchAtLogin = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
         launchAtLogin.target = self
@@ -444,6 +482,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         period = selectedPeriod
     }
 
+    @objc private func selectRefreshInterval(_ sender: NSMenuItem) {
+        guard let rawValue = sender.representedObject as? TimeInterval,
+              let interval = RefreshInterval(rawValue: rawValue) else {
+            return
+        }
+        refreshInterval = interval
+    }
+
     @objc private func openPreferences() {
         let alert = NSAlert()
         alert.messageText = "CCUsage Executable"
@@ -478,6 +524,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         item.isEnabled = false
         return item
+    }
+
+    private func scheduleTimer() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: refreshInterval.rawValue, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refresh() }
+        }
     }
 
     private func formatTokens(_ value: Int64) -> String {

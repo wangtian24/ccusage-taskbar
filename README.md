@@ -8,7 +8,7 @@ It can show Claude Code or Codex usage as:
 - total tokens, formatted as `K`, `M`, or `B`
 - output tokens, formatted as `K`, `M`, or `B`
 
-The app refreshes every 10 minutes and includes a manual **Refresh** menu item.
+The app refreshes every 1 minute by default and includes a manual **Refresh** menu item.
 
 ## Features
 
@@ -24,6 +24,12 @@ The app refreshes every 10 minutes and includes a manual **Refresh** menu item.
   - Year to date
 - Optional launch at login
 - Configurable `ccusage` executable path
+- Configurable refresh interval:
+  - 30 seconds
+  - 1 minute
+  - 5 minutes
+  - 10 minutes
+  - 60 minutes
 
 ## Install ccusage First
 
